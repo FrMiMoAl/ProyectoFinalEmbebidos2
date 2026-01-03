@@ -3,50 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jetson VR Stream</title>
+    <title>Jetson Control VR</title>
     <style>
+        /* Estilos Base */
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: black; overflow: hidden;
-            display: flex; flex-direction: row;
-        }
-        .eye {
-            width: 50%; height: 100%;
+            background-color: #000; font-family: sans-serif;
             overflow: hidden;
-            border-right: 1px solid #222; /* Línea guía central */
         }
+
+        /* Contenedor principal que se pondrá en pantalla completa */
+        #main-container {
+            width: 100%; height: 100%;
+            display: flex; transition: all 0.3s ease;
+        }
+
+        /* Configuración de los "ojos" */
+        .eye {
+            flex: 1; /* Ocupan el mismo espacio */
+            height: 100%;
+            position: relative;
+            background: #000;
+        }
+
+        /* El iframe del video */
         iframe {
             width: 100%; height: 100%;
             border: none;
-            transform: scale(1.2); /* Ajuste de zoom para lentes VR */
+            display: block;
         }
-        #vr-button {
-            position: absolute; bottom: 20px; left: 50%;
-            transform: translateX(-50%);
-            padding: 10px 20px; background: white; border: none;
-            border-radius: 5px; cursor: pointer; font-weight: bold;
+
+        /* Ocultar el segundo ojo por defecto (Modo Normal) */
+        .eye-right { display: none; }
+
+        /* Clase que se activa en Modo VR */
+        .vr-mode .eye-right { display: block; }
+
+        /* Controles flotantes */
+        .controls {
+            position: absolute; bottom: 20px; width: 100%;
+            display: flex; justify-content: center; gap: 10px;
+            z-index: 100;
         }
+
+        button {
+            padding: 12px 20px; background: rgba(255,255,255,0.2);
+            color: white; border: 1px solid white; border-radius: 25px;
+            cursor: pointer; backdrop-filter: blur(5px);
+        }
+
+        button:hover { background: rgba(255,255,255,0.4); }
     </style>
 </head>
 <body>
 
-    <div class="eye">
-        <iframe src="http://100.83.101.38:8889/jetson"></iframe>
+    <div id="main-container">
+        <div class="eye eye-left">
+            <iframe src="http://100.83.101.38:8889/jetson"></iframe>
+        </div>
+
+        <div class="eye eye-right">
+            <iframe src="http://100.83.101.38:8889/jetson"></iframe>
+        </div>
     </div>
 
-    <div class="eye">
-        <iframe src="http://100.83.101.38:8889/jetson"></iframe>
+    <div class="controls">
+        <button onclick="toggleFullscreen()">Pantalla Completa</button>
+        <button onclick="toggleVR()">Modo VR (Doble)</button>
     </div>
-
-    <button id="vr-button" onclick="goFullScreen()">MODO VR</button>
 
     <script>
-        function goFullScreen(){
-            var el = document.documentElement;
-            var rfs = el.requestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-            rfs.call(el);
-            document.getElementById('vr-button').style.display = 'none';
+        const container = document.getElementById('main-container');
+
+        // Función 1: Pantalla Completa
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                // Entrar en pantalla completa
+                document.documentElement.requestFullscreen().catch(err => {
+                    alert(`Error al intentar pantalla completa: ${err.message}`);
+                });
+            } else {
+                // Salir de pantalla completa
+                document.exitFullscreen();
+            }
         }
+
+        // Función 2: Alternar VR (Doble pantalla)
+        function toggleVR() {
+            // Añade o quita la clase 'vr-mode' al contenedor
+            container.classList.toggle('vr-mode');
+            
+            // Si quieres que al activar VR también se ponga pantalla completa:
+            if (container.classList.contains('vr-mode') && !document.fullscreenElement) {
+                toggleFullscreen();
+            }
+        }
+
+        // Evitar que la pantalla se vuelva negra al cambiar orientación
+        window.addEventListener("orientationchange", function() {
+            console.log("Cambiando orientación...");
+        });
     </script>
 </body>
 </html>
