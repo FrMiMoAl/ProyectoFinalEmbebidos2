@@ -1,297 +1,52 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-  <title>VR Viewer – Jetson/RPi Stream (HTTPS + HLS)</title>
-  <meta name="theme-color" content="#0b0f14" />
-  <!-- HLS.js para Chrome/Android/desktop (Safari/iOS reproduce HLS nativo) -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
-  <style>
-    :root{--bg:#0b0f14;--card:#121820;--muted:#7e8a9a;--txt:#e9eef5;--acc:#5eead4}
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e141b);color:var(--txt);font:16px/1.4 system-ui,Segoe UI,Roboto,Arial}
-    .wrap{max-width:960px;margin:24px auto;padding:16px}
-    .card{background:var(--card);border:1px solid #1e2937;border-radius:16px;padding:16px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
-    h1{margin:0 0 6px;font-size:24px}
-    h2{margin:16px 0 8px;font-size:18px;color:#cbd5e1}
-    p{margin:8px 0;color:var(--muted)}
-    label{font-size:12px;color:#9aa6b2}
-    input,select,button{border-radius:12px;border:1px solid #2a3748;background:#0e1420;color:var(--txt);padding:10px 12px}
-    input,select{width:100%}
-    button{cursor:pointer;transition:.15s transform,.15s background}
-    button:hover{transform:translateY(-1px)}
-    .row{display:grid;gap:12px;grid-template-columns:1fr}
-    @media(min-width:720px){.row{grid-template-columns:1.2fr .8fr}}
-    .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-    .toolbar > *{flex:1}
-    .group{display:flex;gap:8px}
-    .pill{background:#0e1726;border:1px solid #223048;border-radius:999px;padding:6px 10px;color:#b6c2cf;font-size:12px;display:inline-flex;gap:8px;align-items:center}
-    .accent{background:linear-gradient(90deg,#0f766e,#0ea5e9);border:0}
-
-    /* Viewer */
-    .viewer{position:relative;background:#000;border-radius:16px;overflow:hidden;min-height:280px}
-    .mono,.left,.right{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
-    .mono video,.mono img,.left canvas,.right canvas{max-width:100%;max-height:100%}
-    .left,.right{display:none}
-    .left{right:50%;border-right:1px solid #111}
-    .right{left:50%}
-    .vr .mono{display:none}
-    .vr .left,.vr .right{display:block}
-    .hint{font-size:12px;color:#94a3b8}
-    .warn{color:#fbbf24;font-size:13px;margin-top:6px}
-    .err{color:#f87171;font-size:13px;margin-top:6px}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jetson VR Stream</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: black; overflow: hidden;
+            display: flex; flex-direction: row;
+        }
+        .eye {
+            width: 50%; height: 100%;
+            overflow: hidden;
+            border-right: 1px solid #222; /* Línea guía central */
+        }
+        iframe {
+            width: 100%; height: 100%;
+            border: none;
+            transform: scale(1.2); /* Ajuste de zoom para lentes VR */
+        }
+        #vr-button {
+            position: absolute; bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px; background: white; border: none;
+            border-radius: 5px; cursor: pointer; font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card" style="margin-bottom:16px">
-      <h1>VR Viewer – Jetson/RPi Stream (HTTPS)</h1>
-      <p>
-        Abre tu stream en <strong>pantalla completa</strong> o en modo <strong>Cardboard VR (doble)</strong>.
-        Soporta <span class="pill">VIDEO URL (HLS/MP4)</span> y <span class="pill">MJPEG (HTTP)</span>.
-        Para WebRTC usa el <em>player</em> del servidor en modo <strong>Iframe</strong>.
-      </p>
 
-      <div class="row" style="margin-top:12px">
-        <div>
-          <label>URL del stream (ej.: <code>https://.../index.m3u8</code> o <code>http://IP:8080/?action=stream</code>)</label>
-          <input id="src" placeholder="pega aquí la URL (HTTPS recomendado para GitHub Pages)" />
-        </div>
-        <div>
-          <label>Modo de entrada</label>
-          <select id="mode">
-            <option value="video">VIDEO (HLS/MP4)</option>
-            <option value="mjpeg">MJPEG (img)</option>
-            <option value="iframe">IFRAME (player externo)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="toolbar">
-        <button id="btnLoad" class="accent">Cargar stream</button>
-        <div class="group">
-          <button id="btnVR">Alternar VR (doble)</button>
-          <button id="btnFS">Pantalla completa</button>
-        </div>
-      </div>
-      <p class="hint">
-        Para GitHub Pages (HTTPS), usa un enlace <strong>HTTPS</strong> (por ejemplo un túnel Cloudflare hacia tu HLS:
-        <code>https://...trycloudflare.com/cam/index.m3u8</code>).
-      </p>
-      <div id="msg" class="warn"></div>
+    <div class="eye">
+        <iframe src="http://100.83.101.38:8889/jetson"></iframe>
     </div>
 
-    <div class="card viewer" id="viewer" aria-label="Video viewer">
-      <div class="mono" id="mono">
-        <video id="video" playsinline muted preload="none" crossorigin="anonymous"></video>
-        <img id="mjpeg" alt="stream" style="display:none" crossorigin="anonymous" />
-        <iframe id="frame" style="display:none;border:0;width:100%;height:100%"
-                allow="autoplay; fullscreen; xr-spatial-tracking; gyroscope; accelerometer"
-                referrerpolicy="no-referrer"></iframe>
-      </div>
-      <div class="left"><canvas id="left"></canvas></div>
-      <div class="right"><canvas id="right"></canvas></div>
+    <div class="eye">
+        <iframe src="http://100.83.101.38:8889/jetson"></iframe>
     </div>
 
-    <div class="card" style="margin-top:16px">
-      <h2>Notas rápidas</h2>
-      <ul>
-        <li>Para VR (doble) solo funciona con <strong>VIDEO</strong> o <strong>MJPEG</strong> (no con Iframe).</li>
-        <li>Si el video no arranca en Android/Chrome con HLS, este archivo ya usa <strong>hls.js</strong>.</li>
-        <li>Si el canvas no puede duplicar por CORS, sirve el stream y la página desde el mismo dominio o añade
-          <code>Access-Control-Allow-Origin: *</code> en tu servidor de HLS.</li>
-      </ul>
-    </div>
-  </div>
+    <button id="vr-button" onclick="goFullScreen()">MODO VR</button>
 
-  <script>
-    // --- elementos UI ---
-    const modeSel = document.getElementById('mode');
-    const urlInp  = document.getElementById('src');
-    const btnLoad = document.getElementById('btnLoad');
-    const btnVR   = document.getElementById('btnVR');
-    const btnFS   = document.getElementById('btnFS');
-    const msgBox  = document.getElementById('msg');
-
-    // --- viewer ---
-    const viewer = document.getElementById('viewer');
-    const mono   = document.getElementById('mono');
-    const vid    = document.getElementById('video');
-    const img    = document.getElementById('mjpeg');
-    const ifr    = document.getElementById('frame');
-
-    const leftC  = document.getElementById('left');
-    const rightC = document.getElementById('right');
-    const lctx   = leftC.getContext('2d');
-    const rctx   = rightC.getContext('2d');
-
-    let rafId = null;
-    let hlsInst = null;
-
-    function note(t, isErr=false){
-      msgBox.textContent = t || '';
-      msgBox.className = isErr ? 'err' : 'warn';
-    }
-
-    function stopVRDraw(){
-      if (rafId){ cancelAnimationFrame(rafId); rafId = null; }
-    }
-
-    function startVRDraw(fromEl){
-      function draw(){
-        const w = viewer.clientWidth;
-        const h = viewer.clientHeight;
-        const half = Math.max(1, Math.floor(w/2));
-        leftC.width = rightC.width = half;
-        leftC.height = rightC.height = h;
-        try{
-          if (fromEl.tagName === 'VIDEO' || fromEl.tagName === 'IMG'){
-            lctx.drawImage(fromEl, 0, 0, half, h);
-            rctx.drawImage(fromEl, 0, 0, half, h);
-          }
-        }catch(e){
-          // Canvas tainted (CORS). Muestra aviso una vez.
-          note('No se puede duplicar en VR: habilita CORS (Access-Control-Allow-Origin) o sirve el stream desde el mismo dominio.', true);
+    <script>
+        function goFullScreen(){
+            var el = document.documentElement;
+            var rfs = el.requestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+            rfs.call(el);
+            document.getElementById('vr-button').style.display = 'none';
         }
-        rafId = requestAnimationFrame(draw);
-      }
-      draw();
-    }
-
-    function isProbablyHLS(u){
-      const s = u.toLowerCase();
-      return s.endsWith('.m3u8') || s.includes('.m3u8?');
-    }
-
-    function cleanupPlayers(){
-      stopVRDraw();
-      if (hlsInst){ try{ hlsInst.destroy(); }catch{} hlsInst=null; }
-      try{ vid.pause(); }catch{}
-      vid.removeAttribute('src');
-      vid.load();
-      img.removeAttribute('src');
-      ifr.removeAttribute('src');
-    }
-
-    function playHLS(url){
-      // iOS/Safari nativo
-      if (vid.canPlayType('application/vnd.apple.mpegurl')){
-        vid.src = url; vid.autoplay = true; vid.muted = true; vid.playsInline = true;
-        vid.play().catch(()=>{});
-        return;
-      }
-      // Chrome/Android/desktop → hls.js
-      if (window.Hls && Hls.isSupported()){
-        hlsInst = new Hls({ lowLatencyMode: true });
-        hlsInst.loadSource(url);
-        hlsInst.attachMedia(vid);
-        hlsInst.on(Hls.Events.MANIFEST_PARSED, ()=> vid.play().catch(()=>{}));
-        hlsInst.on(Hls.Events.ERROR, (evt, data)=> {
-          console.warn('HLS error', data);
-          if (data && data.fatal){ note('Error HLS fatal: ' + data.type, true); }
-        });
-        return;
-      }
-      note('Tu navegador no soporta HLS aquí. Prueba Safari/iOS o usa MJPEG.', true);
-    }
-
-    function load(){
-      const url = urlInp.value.trim();
-      const mode = modeSel.value;
-
-      if (!url){ note('Pega la URL del stream.'); return; }
-
-      cleanupPlayers();
-      note('');
-
-      vid.style.display = 'none';
-      img.style.display = 'none';
-      ifr.style.display = 'none';
-      mono.style.display = 'flex';
-
-      if (mode === 'mjpeg'){
-        if (url.startsWith('rtsp://')){
-          note('Has puesto RTSP pero el modo es MJPEG (img). Cambia a Iframe (player) o usa HLS (.m3u8).', true);
-        }
-        img.src = url;
-        img.style.display = 'block';
-      }
-      else if (mode === 'video'){
-        vid.style.display = 'block';
-        if (isProbablyHLS(url)){
-          playHLS(url);
-        } else {
-          // MP4/fragmented MP4 directo (debe ser HTTPS en GitHub Pages)
-          vid.src = url; vid.autoplay = true; vid.muted = true; vid.playsInline = true;
-          vid.play().catch(()=>{});
-        }
-      }
-      else if (mode === 'iframe'){
-        if (!/^https:\/\//i.test(url)){
-          note('Para Iframe en GitHub Pages necesitas un URL HTTPS (no HTTP/RTSP).', true);
-        }
-        ifr.src = url;
-        ifr.style.display = 'block';
-      }
-
-      if (viewer.classList.contains('vr')){
-        toggleVR(true);
-      }
-    }
-
-    async function goFullscreen(){
-      const el = viewer;
-      try{
-        if (el.requestFullscreen) await el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-      }catch(e){}
-    }
-
-    function toggleVR(forceOn){
-      const willOn = (forceOn !== undefined) ? forceOn : !viewer.classList.contains('vr');
-      const active = (modeSel.value==='mjpeg') ? img : (modeSel.value==='iframe' ? ifr : vid);
-
-      if (active === ifr && willOn){
-        note('VR (doble) no es posible con Iframe. Usa HLS (VIDEO) o MJPEG.', true);
-        return;
-      }
-
-      if (willOn){
-        viewer.classList.add('vr');
-        startVRDraw(active);
-      }else{
-        viewer.classList.remove('vr');
-        stopVRDraw();
-      }
-    }
-
-    btnLoad.addEventListener('click', load);
-    btnVR.addEventListener('click', ()=> toggleVR());
-    btnFS.addEventListener('click', goFullscreen);
-    window.addEventListener('resize', ()=> {
-      if (viewer.classList.contains('vr')){
-        // redibuja en nuevo tamaño
-        stopVRDraw();
-        const active = (modeSel.value==='mjpeg') ? img : (modeSel.value==='iframe' ? ifr : vid);
-        if (active !== ifr) startVRDraw(active);
-      }
-    });
-
-    // intento de landscape (no siempre permitido)
-    if (screen.orientation && screen.orientation.lock){
-      screen.orientation.lock('landscape').catch(()=>{});
-    }
-
-    // Sugerencia automática: si el usuario pega RTSP, proponer Iframe
-    urlInp.addEventListener('change', ()=>{
-      const v = urlInp.value.trim().toLowerCase();
-      if (v.startsWith('rtsp://') && modeSel.value!=='iframe'){
-        note('Detectado RTSP. Usa Iframe (player externo) o publica HLS (.m3u8) en HTTPS para VR.', true);
-      }
-    });
-  </script>
+    </script>
 </body>
 </html>
