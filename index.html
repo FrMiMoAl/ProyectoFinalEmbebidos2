@@ -21,15 +21,16 @@
             height: 100%;
             display: flex;
             position: relative;
+            background: #000;
         }
 
-        /* Modo Normal: una sola pantalla centrada */
+        /* Modo Normal: una sola pantalla */
         #main-container.normal-mode {
             justify-content: center;
             align-items: center;
         }
 
-        /* Modo VR: dos pantallas lado a lado */
+        /* Modo VR: dos pantallas lado a lado sin espacio */
         #main-container.vr-mode {
             flex-direction: row;
         }
@@ -38,6 +39,9 @@
             position: relative;
             background: #000;
             overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         /* En modo normal, solo se muestra un ojo */
@@ -50,30 +54,46 @@
             display: none;
         }
 
-        /* En modo VR, ambos ojos ocupan 50% */
+        /* En modo VR, ambos ojos ocupan exactamente 50% */
         .vr-mode .eye-left,
         .vr-mode .eye-right {
             width: 50%;
             height: 100%;
-            display: block;
+            display: flex;
         }
 
-        /* Contenedor del iframe con aspect ratio */
-        .video-container {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100%;
+        /* Contenedor del video con aspecto ratio 16:9 y franjas negras */
+        .video-wrapper {
+            position: relative;
+            width: 90%;
             height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; /* Ratio 16:9 */
+            background: #000;
+        }
+
+        /* En modo VR, ajustar el tamaño del video para que coincida con tu ejemplo */
+        .vr-mode .video-container {
+            padding-bottom: 75%; /* Más cuadrado como en tu foto */
+            max-width: 85%;
+            margin: 0 auto;
         }
 
         iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             border: none;
             display: block;
-            object-fit: cover;
         }
 
         /* Controles flotantes */
@@ -141,14 +161,14 @@
             opacity: 0;
         }
 
-        /* Línea divisoria en modo VR */
+        /* Línea divisoria central muy sutil (como en lentes VR reales) */
         .divider {
             position: absolute;
             left: 50%;
             top: 0;
             bottom: 0;
-            width: 2px;
-            background: rgba(255, 255, 255, 0.1);
+            width: 1px;
+            background: rgba(0, 0, 0, 0.5);
             z-index: 10;
             display: none;
         }
@@ -156,24 +176,34 @@
         .vr-mode .divider {
             display: block;
         }
+
+        /* Ajustes específicos para replicar tu foto */
+        .vr-mode .video-wrapper {
+            width: 100%;
+            padding: 8% 5%; /* Espaciado superior e inferior */
+        }
     </style>
 </head>
 <body>
     <div id="main-container" class="normal-mode">
         <div class="eye eye-left">
-            <div class="video-container">
-                <iframe src="http://100.83.101.38:8889/jetson" allow="autoplay; fullscreen"></iframe>
+            <div class="video-wrapper">
+                <div class="video-container">
+                    <iframe src="http://100.83.101.38:8889/jetson" allow="autoplay; fullscreen"></iframe>
+                </div>
             </div>
         </div>
         <div class="eye eye-right">
-            <div class="video-container">
-                <iframe src="http://100.83.101.38:8889/jetson" allow="autoplay; fullscreen"></iframe>
+            <div class="video-wrapper">
+                <div class="video-container">
+                    <iframe src="http://100.83.101.38:8889/jetson" allow="autoplay; fullscreen"></iframe>
+                </div>
             </div>
         </div>
         <div class="divider"></div>
     </div>
 
-    <div class="mode-indicator" id="modeIndicator">Modo Normal</div>
+    <div class="mode-indicator" id="modeIndicator">Modo Normal - Toca "Activar VR"</div>
 
     <div class="controls" id="controls">
         <button onclick="toggleVR()" id="vrButton">🥽 Activar VR</button>
@@ -198,7 +228,7 @@
                 container.classList.add('vr-mode');
                 vrButton.classList.add('active');
                 vrButton.textContent = '🥽 Desactivar VR';
-                modeIndicator.textContent = 'Modo VR - Coloca tus lentes';
+                modeIndicator.textContent = '✓ Modo VR Activado - Coloca tus lentes';
                 
                 // Activar pantalla completa automáticamente
                 if (!document.fullscreenElement) {
@@ -221,7 +251,7 @@
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().then(() => {
                     fsButton.classList.add('active');
-                    fsButton.textContent = '⛶ Salir Pantalla Completa';
+                    fsButton.textContent = '⛶ Salir';
                 }).catch(err => {
                     console.error(`Error al activar pantalla completa: ${err.message}`);
                 });
@@ -242,7 +272,7 @@
             }, 3000);
         }
 
-        // Ocultar controles después de inactividad
+        // Ocultar controles después de inactividad en modo VR
         let inactivityTimeout;
         function resetInactivityTimer() {
             controls.classList.remove('hidden');
@@ -265,12 +295,27 @@
             if (!document.fullscreenElement) {
                 fsButton.classList.remove('active');
                 fsButton.textContent = '⛶ Pantalla Completa';
+                controls.classList.remove('hidden');
             }
         });
 
         // Prevenir zoom en dispositivos móviles
         document.addEventListener('gesturestart', function(e) {
             e.preventDefault();
+        });
+
+        // Doble tap para ocultar/mostrar controles en VR
+        let lastTap = 0;
+        document.addEventListener('touchend', function(e) {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < 300 && tapLength > 0) {
+                if (isVRMode) {
+                    controls.classList.toggle('hidden');
+                    modeIndicator.classList.toggle('hidden');
+                }
+            }
+            lastTap = currentTime;
         });
 
         // Bloquear orientación en modo VR (solo funciona en pantalla completa)
