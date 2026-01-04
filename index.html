@@ -30,7 +30,7 @@
             align-items: center;
         }
 
-        /* Modo VR: dos pantallas lado a lado */
+        /* Modo VR: dos pantallas lado a lado sin espacio */
         #main-container.vr-mode {
             flex-direction: row;
         }
@@ -62,38 +62,28 @@
             display: flex;
         }
 
-        /* Separación adicional entre las imágenes para lentes VR */
-        .vr-mode .eye-left {
-            padding-right: 2%;
-        }
-
-        .vr-mode .eye-right {
-            padding-left: 2%;
-        }
-
-        /* Contenedor del video */
+        /* Contenedor del video con aspecto ratio 16:9 y franjas negras */
         .video-wrapper {
             position: relative;
-            width: 100%;
+            width: 90%;
             height: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 10% 8%;
         }
 
         .video-container {
             position: relative;
             width: 100%;
-            height: 100%;
+            padding-bottom: 56.25%; /* Ratio 16:9 */
             background: #000;
-            border-radius: 8px;
-            overflow: hidden;
         }
 
-        /* Aplicar distorsión de barril para compensar las lentes VR */
+        /* En modo VR, ajustar el tamaño del video para que coincida con tu ejemplo */
         .vr-mode .video-container {
-            transform: scale(0.85);
+            padding-bottom: 75%; /* Más cuadrado como en tu foto */
+            max-width: 85%;
+            margin: 0 auto;
         }
 
         iframe {
@@ -113,8 +103,7 @@
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            justify-content: center;
             gap: 10px;
             z-index: 1000;
             transition: opacity 0.3s;
@@ -123,11 +112,6 @@
         .controls.hidden {
             opacity: 0;
             pointer-events: none;
-        }
-
-        .control-row {
-            display: flex;
-            gap: 10px;
         }
 
         button {
@@ -141,7 +125,6 @@
             font-size: 14px;
             font-weight: bold;
             transition: all 0.3s;
-            white-space: nowrap;
         }
 
         button:hover {
@@ -158,11 +141,6 @@
             border-color: rgba(76, 175, 80, 1);
         }
 
-        button.small {
-            padding: 8px 16px;
-            font-size: 12px;
-        }
-
         /* Indicador de modo */
         .mode-indicator {
             position: fixed;
@@ -177,27 +155,32 @@
             font-size: 12px;
             backdrop-filter: blur(10px);
             transition: opacity 0.3s;
-            text-align: center;
         }
 
         .mode-indicator.hidden {
             opacity: 0;
         }
 
-        /* Línea divisoria central */
+        /* Línea divisoria central muy sutil (como en lentes VR reales) */
         .divider {
             position: absolute;
             left: 50%;
             top: 0;
             bottom: 0;
-            width: 0px;
-            background: #000;
+            width: 1px;
+            background: rgba(0, 0, 0, 0.5);
             z-index: 10;
             display: none;
         }
 
         .vr-mode .divider {
             display: block;
+        }
+
+        /* Ajustes específicos para replicar tu foto */
+        .vr-mode .video-wrapper {
+            width: 100%;
+            padding: 8% 5%; /* Espaciado superior e inferior */
         }
     </style>
 </head>
@@ -223,18 +206,8 @@
     <div class="mode-indicator" id="modeIndicator">Modo Normal - Toca "Activar VR"</div>
 
     <div class="controls" id="controls">
-        <div class="control-row">
-            <button onclick="toggleVR()" id="vrButton">🥽 Activar VR</button>
-            <button onclick="toggleFullscreen()" id="fsButton">⛶ Pantalla Completa</button>
-        </div>
-        <div class="control-row" id="vrControls" style="display: none;">
-            <button class="small" onclick="adjustSeparation(-1)">◄ Juntar</button>
-            <button class="small" onclick="adjustSeparation(1)">Separar ►</button>
-        </div>
-        <div class="control-row" id="scaleControls" style="display: none;">
-            <button class="small" onclick="adjustScale(-0.05)">🔍- Zoom</button>
-            <button class="small" onclick="adjustScale(0.05)">🔍+ Zoom</button>
-        </div>
+        <button onclick="toggleVR()" id="vrButton">🥽 Activar VR</button>
+        <button onclick="toggleFullscreen()" id="fsButton">⛶ Pantalla Completa</button>
     </div>
 
     <script>
@@ -243,16 +216,8 @@
         const controls = document.getElementById('controls');
         const vrButton = document.getElementById('vrButton');
         const fsButton = document.getElementById('fsButton');
-        const vrControls = document.getElementById('vrControls');
-        const scaleControls = document.getElementById('scaleControls');
-        const eyeLeft = document.querySelector('.eye-left');
-        const eyeRight = document.querySelector('.eye-right');
-        const videoContainers = document.querySelectorAll('.video-container');
-        
         let isVRMode = false;
         let hideControlsTimeout;
-        let separation = 2; // Separación inicial en porcentaje
-        let scale = 0.85; // Escala inicial
 
         // Función para alternar modo VR
         function toggleVR() {
@@ -263,12 +228,7 @@
                 container.classList.add('vr-mode');
                 vrButton.classList.add('active');
                 vrButton.textContent = '🥽 Desactivar VR';
-                modeIndicator.textContent = '✓ Modo VR - Ajusta con los botones si ves doble';
-                vrControls.style.display = 'flex';
-                scaleControls.style.display = 'flex';
-                
-                // Aplicar separación actual
-                applySeparation();
+                modeIndicator.textContent = '✓ Modo VR Activado - Coloca tus lentes';
                 
                 // Activar pantalla completa automáticamente
                 if (!document.fullscreenElement) {
@@ -280,35 +240,9 @@
                 vrButton.classList.remove('active');
                 vrButton.textContent = '🥽 Activar VR';
                 modeIndicator.textContent = 'Modo Normal';
-                vrControls.style.display = 'none';
-                scaleControls.style.display = 'none';
             }
 
             // Mostrar indicador temporalmente
-            showIndicator();
-        }
-
-        // Ajustar separación entre imágenes
-        function adjustSeparation(delta) {
-            separation = Math.max(0, Math.min(10, separation + delta));
-            applySeparation();
-            modeIndicator.textContent = `Separación: ${separation}%`;
-            showIndicator();
-        }
-
-        // Aplicar la separación
-        function applySeparation() {
-            eyeLeft.style.paddingRight = separation + '%';
-            eyeRight.style.paddingLeft = separation + '%';
-        }
-
-        // Ajustar escala/zoom
-        function adjustScale(delta) {
-            scale = Math.max(0.5, Math.min(1.2, scale + delta));
-            videoContainers.forEach(container => {
-                container.style.transform = `scale(${scale})`;
-            });
-            modeIndicator.textContent = `Zoom: ${Math.round(scale * 100)}%`;
             showIndicator();
         }
 
@@ -347,7 +281,7 @@
             if (isVRMode && document.fullscreenElement) {
                 inactivityTimeout = setTimeout(() => {
                     controls.classList.add('hidden');
-                }, 5000);
+                }, 3000);
             }
         }
 
@@ -378,17 +312,13 @@
             if (tapLength < 300 && tapLength > 0) {
                 if (isVRMode) {
                     controls.classList.toggle('hidden');
-                    if (!controls.classList.contains('hidden')) {
-                        modeIndicator.classList.remove('hidden');
-                    } else {
-                        modeIndicator.classList.add('hidden');
-                    }
+                    modeIndicator.classList.toggle('hidden');
                 }
             }
             lastTap = currentTime;
         });
 
-        // Bloquear orientación en modo VR
+        // Bloquear orientación en modo VR (solo funciona en pantalla completa)
         window.addEventListener('orientationchange', function() {
             if (isVRMode && screen.orientation && screen.orientation.lock) {
                 screen.orientation.lock('landscape').catch(err => {
